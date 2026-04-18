@@ -1,0 +1,64 @@
+from aiogram import Router, F, Bot
+from aiogram.filters import Command
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from database import set_user_birthday, get_user_birthday
+from utils import days_until_birthday
+import re
+
+router = Router()
+
+class UserBdayState(StatesGroup):
+    waiting_for_bday = State()
+
+@router.message(Command("bday"))
+async def bday_handler(message: Message, state: FSMContext, bot: Bot):
+    if message.chat.type != 'private':
+        # Group handling
+        user_data = await get_user_birthday(message.from_user.id)
+        if user_data:
+            name, day, month, year = user_data
+            days = days_until_birthday(day, month)
+            if days == 0:
+                await message.reply(f"🎂 Bugun sizning tug'ilgan kuningiz! Tabriklaymiz!")
+            else:
+                await message.reply(f"🎈 {message.from_user.first_name}, sizning tug'ilgan kuningizga *{days} kun* qoldi! ✨", parse_mode="Markdown")
+        else:
+            bot_info = await bot.get_me()
+            markup = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🎁 Tug'ilgan kunni qo'shish", url=f"https://t.me/{bot_info.username}?start=set_bday")]
+            ])
+            await message.reply("⚠️ Avval tug'ilgan kuningizni bot lichkasida qo'shing!", reply_markup=markup)
+        return
+
+    # Private chat handling
+    await message.answer("🎂 Tug'ilgan kuningizni `DD.MM.YYYY` yoki `DD.MM` formatida yuboring:\n\n(Masalan: `24.08.2005`)", parse_mode="Markdown")
+    await state.set_state(UserBdayState.waiting_for_bday)
+
+@router.message(UserBdayState.waiting_for_bday)
+async def process_user_bday(message: Message, state: FSMContext):
+    # Regex to check DD.MM.YYYY or DD.MM
+    match = re.match(r"^(\d{2})\.(\d{2})\.?(\d{4})?$", message.text.strip())
+    if match:
+        day = int(match.group(1))
+        month = int(match.group(2))
+        year = int(match.group(3)) if match.group(3) else None
+        
+        # Simple validation
+        if not (1 <= day <= 31 and 1 <= month <= 12):
+            await message.answer("❌ Noto'g'ri sana! Iltimos, haqiqiy sanani kiriting.")
+            return
+
+        await set_user_birthday(message.from_user.id, message.from_user.first_name, day, month, year)
+        days = days_until_birthday(day, month)
+        
+        if days == 0:
+            resp = f"✅ Saqlandi! \n\n🎂 *Bugun sizning tug'ilgan kuningiz!* Tabriklaymiz! ✨🎉"
+        else:
+            resp = f"✅ Saqlandi! \n\n🌟 {message.from_user.first_name}, sizning tug'ilgan kuningizga *{days} kun* qoldi! 🎉"
+            
+        await message.answer(resp, parse_mode="Markdown")
+        await state.clear()
+    else:
+        await message.answer("❌ Noto'g'ri format! Iltimos, `DD.MM.YYYY` formatida kiriting (masalan: `24.08.2005`).")
