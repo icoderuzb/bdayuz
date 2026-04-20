@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from database import add_birthday, add_admin, is_admin, get_admin_data, get_all_admins, remove_admin, delete_birthday, get_all_birthdays, get_user_added_birthdays
 from config import OWNER_ID
+from utils import days_until_birthday
 import re
 
 router = Router()
@@ -73,10 +74,20 @@ async def list_bdays_handler(message: Message):
         await message.answer("📭 Siz hali hech qanday tug'ilgan kun qo'shmagansiz.")
         return
 
-    text = "📅 *Siz qo'shgan tug'ilgan kunlar:* \n\n"
-    for name, day, month, year, chat_id in bdays:
+    # Sort by days until birthday
+    sorted_bdays = sorted(bdays, key=lambda x: days_until_birthday(x[1], x[2]))
+
+    text = "📅 *Siz qo'shgan tug'ilgan kunlar (tartiblangan):* \n\n"
+    for name, day, month, year, chat_id in sorted_bdays:
+        days_remaining = days_until_birthday(day, month)
         year_str = f".{year}" if year else ""
-        text += f"• ` {name} - {day:02d}.{month:02d}{year_str} `\n"
+        
+        if days_remaining == 0:
+            rem_text = "BUGUN! 🥳"
+        else:
+            rem_text = f"{days_remaining} kun qoldi"
+            
+        text += f"• ` {name} - {day:02d}.{month:02d}{year_str} ` — *{rem_text}*\n"
     
     await message.answer(text, parse_mode="Markdown")
 
