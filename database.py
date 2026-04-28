@@ -37,6 +37,14 @@ async def init_db():
             )
         ''')
         
+        # Create user_settings table for reminder preferences
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS user_settings (
+                user_id INTEGER PRIMARY KEY,
+                remind_days TEXT DEFAULT '[0,1,2]'
+            )
+        ''')
+        
         await db.commit()
 
 async def add_birthday(name, day, month, year, chat_id, added_by):
@@ -49,7 +57,7 @@ async def add_birthday(name, day, month, year, chat_id, added_by):
 
 async def get_all_birthdays():
     async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute('SELECT name, day, month, year, chat_id FROM birthdays') as cursor:
+        async with db.execute('SELECT name, day, month, year, chat_id, added_by FROM birthdays') as cursor:
             return await cursor.fetchall()
 
 async def get_user_added_birthdays(user_id):
@@ -115,3 +123,17 @@ async def get_all_user_birthdays():
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute('SELECT user_id, name, day, month, year FROM user_birthdays') as cursor:
             return await cursor.fetchall()
+
+async def get_user_remind_settings(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute('SELECT remind_days FROM user_settings WHERE user_id = ?', (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return json.loads(row[0]) if row else [0, 1, 2]
+
+async def set_user_remind_settings(user_id, days):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            'INSERT OR REPLACE INTO user_settings (user_id, remind_days) VALUES (?, ?)',
+            (user_id, json.dumps(sorted(days)))
+        )
+        await db.commit()

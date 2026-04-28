@@ -1,13 +1,31 @@
 from aiogram import Router, F, Bot
 from aiogram.filters import Command
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from database import set_user_birthday, get_user_birthday
+from database import set_user_birthday, get_user_birthday, get_user_remind_settings, set_user_remind_settings
 from utils import days_until_birthday
 import re
 
 router = Router()
+
+REMIND_OPTIONS = [
+    (0,  "Tug'ilgan kuni 🥳"),
+    (1,  "1 kun oldin ⏳"),
+    (2,  "2 kun oldin 🗓"),
+    (7,  "1 hafta oldin 🔔"),
+]
+
+def build_remind_keyboard(active_days: list):
+    buttons = []
+    for day, label in REMIND_OPTIONS:
+        mark = "✅" if day in active_days else "☑️"
+        buttons.append([InlineKeyboardButton(
+            text=f"{mark} {label}",
+            callback_data=f"remind_toggle_{day}"
+        )])
+    buttons.append([InlineKeyboardButton(text="💾 Saqlash", callback_data="remind_save")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 class UserBdayState(StatesGroup):
     waiting_for_bday = State()
@@ -62,3 +80,41 @@ async def process_user_bday(message: Message, state: FSMContext):
         await state.clear()
     else:
         await message.answer("❌ Noto'g'ri format! Iltimos, `DD.MM.YYYY` formatida kiriting (masalan: `24.08.2005`).")
+
+@router.message(Command("remind_settings"))
+async def remind_settings_handler(message: Message):
+    current = await get_user_remind_settings(message.from_user.id)
+    markup = build_remind_keyboard(current)
+    await message.answer(
+        "🔔 *Eslatma sozlamalari*\n\n"
+        "Qachon eslatma olishni xohlaysiz?\n"
+        "_(Bir nechta variant tanlash mumkin)_",
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
+
+@router.callback_query(F.data.startswith("remind_toggle_"))
+async def remind_toggle_handler(call: CallbackQuery):
+    day = int(call.data.split("_")[2])
+    current = await get_user_remind_settings(call.from_user.id)
+
+    if day in current:
+        current.remove(day)
+    else:
+        current.append(day)
+
+    await set_user_remind_settings(call.from_user.id, current)
+    markup = build_remind_keyboard(current)
+    await call.message.edit_reply_markup(reply_markup=markup)
+    await call.answer("✅ O'zgartirildi!")
+
+@router.callback_query(F.data == "remind_save")
+async def remind_save_handler(call: CallbackQuery):
+    current = await get_user_remind_settings(call.from_user.id)
+    labels = [label for day, label in REMIND_OPTIONS if day in current]
+    if labels:
+        text = "✅ *Sozlamalar saqlandi!*\n\n🔔 Eslatmalar:\n" + "\n".join(f"• {l}" for l in labels)
+    else:
+        text = "⚠️ Hech qanday eslatma tanlanmagan!\nKamida bittasini tanlang."
+    await call.message.edit_text(text, parse_mode="Markdown")
+    await call.answer("💾 Saqlandi!")

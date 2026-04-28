@@ -77,7 +77,15 @@ async def list_bdays_handler(message: Message):
     # Sort by days until birthday
     sorted_bdays = sorted(bdays, key=lambda x: days_until_birthday(x[1], x[2]))
 
-    text = "📅 *Siz qo'shgan tug'ilgan kunlar (tartiblangan):* \n\n"
+    total = len(sorted_bdays)
+    today_count = sum(1 for _, d, m, *_ in sorted_bdays if days_until_birthday(d, m) == 0)
+
+    text = (f"📅 *Siz qo'shgan tug'ilgan kunlar:*\n"
+            f"👥 Jami: *{total} ta*")
+    if today_count:
+        text += f" | 🥳 Bugun: *{today_count} ta*"
+    text += "\n\n"
+
     for name, day, month, year, chat_id in sorted_bdays:
         days_remaining = days_until_birthday(day, month)
         year_str = f".{year}" if year else ""
@@ -89,6 +97,43 @@ async def list_bdays_handler(message: Message):
             
         text += f"• ` {name} - {day:02d}.{month:02d}{year_str} ` — *{rem_text}*\n"
     
+    await message.answer(text, parse_mode="Markdown")
+
+@router.message(Command("calendar"))
+async def calendar_handler(message: Message):
+    bdays = await get_user_added_birthdays(message.from_user.id)
+    if not bdays:
+        await message.answer("📭 Siz hali hech qanday tug'ilgan kun qo'shmagansiz.")
+        return
+
+    upcoming = [
+        (name, day, month, year, chat_id)
+        for name, day, month, year, chat_id in bdays
+        if 0 <= days_until_birthday(day, month) <= 30
+    ]
+
+    if not upcoming:
+        await message.answer("😌 Keyingi *30 kun* ichida tug'ilgan kunlar yo'q.", parse_mode="Markdown")
+        return
+
+    upcoming.sort(key=lambda x: days_until_birthday(x[1], x[2]))
+
+    text = "📅 *Keyingi 30 kun ichidagi tug'ilgan kunlar:*\n\n"
+    for name, day, month, year, chat_id in upcoming:
+        days_rem = days_until_birthday(day, month)
+        year_str = f".{year}" if year else ""
+
+        if days_rem == 0:
+            emoji, rem = "🎂", "BUGUN! 🥳"
+        elif days_rem <= 3:
+            emoji, rem = "🎁", f"{days_rem} kun qoldi 🔥"
+        elif days_rem <= 7:
+            emoji, rem = "🎈", f"{days_rem} kun qoldi"
+        else:
+            emoji, rem = "📅", f"{days_rem} kun qoldi"
+
+        text += f"{emoji} *{name}* — `{day:02d}.{month:02d}{year_str}`\n   └ {rem}\n\n"
+
     await message.answer(text, parse_mode="Markdown")
 
 @router.message(Command("admin"))

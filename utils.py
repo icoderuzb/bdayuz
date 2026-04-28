@@ -1,14 +1,25 @@
 from datetime import datetime, date, timedelta
+import pytz
+
+TASHKENT_TZ = pytz.timezone('Asia/Tashkent')
+
+def now_tashkent():
+    """Hozirgi Toshkent vaqtini qaytaradi."""
+    return datetime.now(TASHKENT_TZ)
+
+def today_tashkent():
+    """Bugungi Toshkent sanasini qaytaradi."""
+    return now_tashkent().date()
 
 def get_next_birthday(day, month, year=None):
-    today = date.today()
+    today = today_tashkent()
     try:
         # Check if birthday already happened this year
         bday_this_year = date(today.year, month, day)
     except ValueError:
         # Handle Leap year issue (Feb 29)
         if month == 2 and day == 29:
-            bday_this_year = date(today.year, 2, 28) # Or 3, 1
+            bday_this_year = date(today.year, 2, 28)
         else:
             raise
             
@@ -20,10 +31,10 @@ def get_next_birthday(day, month, year=None):
     return bday_this_year
 
 def format_countdown(target_date):
-    # We want a more precise countdown (dd, hh, mm, ss) 
+    # We want a more precise countdown (dd, hh, mm, ss)
     # Since reminders happen at specific times, let's assume the target is 00:00 of the birthday
-    now = datetime.now()
-    target_time = datetime.combine(target_date, datetime.min.time())
+    now = now_tashkent()
+    target_time = TASHKENT_TZ.localize(datetime.combine(target_date, datetime.min.time()))
     
     diff = target_time - now
     
@@ -43,5 +54,5 @@ def get_age(birth_year, current_year):
 
 def days_until_birthday(day, month):
     next_bday = get_next_birthday(day, month)
-    today = date.today()
+    today = today_tashkent()
     return (next_bday - today).days
