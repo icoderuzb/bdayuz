@@ -129,29 +129,27 @@ async def main():
     # Initialize DB
     await init_db()
     
-    # Include routers
-    dp.include_router(admin.router)
-    dp.include_router(user.router)
-    
-    # Schedule birthday checks at 00:05 every day
-    scheduler.add_job(check_birthdays, 'cron', hour=0, minute=5, timezone=TASHKENT_TZ)
-    
-    # Schedule daily personal reminders at 08:08 every day (Tashkent time)
-    scheduler.add_job(daily_user_reminders, 'cron', hour=8, minute=8, timezone=TASHKENT_TZ)
-    
-    # Also add a job to check 1, 2 days before at a reasonable time or 00:05 as well
-    # The prompt says 2 days before and 1 day before. 
-    # Let's say we check at 00:05 for everything.
-    
-    scheduler.start()
-    
-    logging.info("Bot is starting...")
-    await dp.start_polling(bot)
+    try:
+        # Include routers
+        dp.include_router(admin.router)
+        dp.include_router(user.router)
+        
+        # Schedule birthday checks at 00:05 every day
+        scheduler.add_job(check_birthdays, 'cron', hour=0, minute=5, timezone=TASHKENT_TZ)
+        
+        # Schedule daily personal reminders at 08:08 every day (Tashkent time)
+        scheduler.add_job(daily_user_reminders, 'cron', hour=8, minute=8, timezone=TASHKENT_TZ)
+        
+        scheduler.start()
+        
+        logging.info("Bot is starting...")
+        await dp.start_polling(bot)
+    finally:
+        await close_db()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logging.info("Bot stopped!")
-    finally:
-        asyncio.run(close_db())
+
