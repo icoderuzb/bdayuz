@@ -1,4 +1,18 @@
-aiogram
-apscheduler
-aiosqlite
-python-dotenv
+# ──────────────────────────────────────────
+# Birthday Reminder Bot — Dependencies
+# ──────────────────────────────────────────
+
+# Telegram Bot Framework
+aiogram==3.26.0
+
+# Task Scheduler (kunlik eslatmalar uchun)
+APScheduler==3.11.2
+
+# Async PostgreSQL driver
+asyncpg==0.29.0
+
+# Timezone support
+pytz==2025.2
+
+# .env fayl o'qish uchun
+python-dotenv==1.2.1

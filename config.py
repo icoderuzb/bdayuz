@@ -9,8 +9,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
 # Main Administrator ID (Owner)
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 
-# Database File Path
-DB_PATH = "bot_database.db"
+# PostgreSQL connection string
+# Format: postgresql://user:password@host:port/dbname
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # Notification Settings
 REMINDER_TIME_0 = "00:05"  # Time for birthday day notification

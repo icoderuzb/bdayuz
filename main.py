@@ -7,7 +7,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import BOT_TOKEN, OWNER_ID
-from database import init_db, get_all_birthdays, is_admin, get_all_user_birthdays, get_user_remind_settings
+from database import init_db, close_db, get_all_birthdays, is_admin, get_all_user_birthdays, get_user_remind_settings
 from utils import get_next_birthday, format_countdown, get_age, days_until_birthday, today_tashkent
 import admin
 import user
@@ -153,3 +153,5 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logging.info("Bot stopped!")
+    finally:
+        asyncio.run(close_db())
