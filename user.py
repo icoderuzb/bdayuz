@@ -54,6 +54,19 @@ async def bday_handler(message: Message, state: FSMContext, bot: Bot):
     await message.answer("🎂 Tug'ilgan kuningizni `DD.MM.YYYY` yoki `DD.MM` formatida yuboring:\n\n(Masalan: `24.08.2005`)", parse_mode="Markdown")
     await state.set_state(UserBdayState.waiting_for_bday)
 
+@router.message(Command("remind_settings"))
+async def remind_settings_handler(message: Message, state: FSMContext):
+    await state.clear()
+    current = await get_user_remind_settings(message.from_user.id)
+    markup = build_remind_keyboard(current)
+    await message.answer(
+        "🔔 *Eslatma sozlamalari*\n\n"
+        "Qachon eslatma olishni xohlaysiz?\n"
+        "_(Bir nechta variant tanlash mumkin)_",
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
+
 @router.message(UserBdayState.waiting_for_bday)
 async def process_user_bday(message: Message, state: FSMContext):
     # Regex to check DD.MM.YYYY or DD.MM
@@ -80,18 +93,6 @@ async def process_user_bday(message: Message, state: FSMContext):
         await state.clear()
     else:
         await message.answer("❌ Noto'g'ri format! Iltimos, `DD.MM.YYYY` formatida kiriting (masalan: `24.08.2005`).")
-
-@router.message(Command("remind_settings"))
-async def remind_settings_handler(message: Message):
-    current = await get_user_remind_settings(message.from_user.id)
-    markup = build_remind_keyboard(current)
-    await message.answer(
-        "🔔 *Eslatma sozlamalari*\n\n"
-        "Qachon eslatma olishni xohlaysiz?\n"
-        "_(Bir nechta variant tanlash mumkin)_",
-        reply_markup=markup,
-        parse_mode="Markdown"
-    )
 
 @router.callback_query(F.data.startswith("remind_toggle_"))
 async def remind_toggle_handler(call: CallbackQuery):

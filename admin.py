@@ -152,12 +152,20 @@ async def admin_panel(message: Message):
 @router.callback_query(F.data == "list_admins")
 async def list_admins_handler(call: CallbackQuery):
     admins = await get_all_admins()
-    text = "📋 *Adminlar ro'yxati:*\n\n"
-    for uid, can_manage in admins:
-        status = "👑 (Asosiy)" if uid == OWNER_ID else ("🛠 (Huquqli)" if can_manage else "👤 (Oddiy)")
-        text += f"• `{uid}` {status}\n"
     
-    await call.message.edit_text(text, parse_mode="Markdown")
+    markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_to_admin_panel")]
+    ])
+    
+    text = "📋 *Adminlar ro'yxati:*\n\n"
+    if not admins:
+        text += "Hozircha adminlar yo'q (bo'sh)."
+    else:
+        for uid, can_manage in admins:
+            status = "👑 (Asosiy)" if uid == OWNER_ID else ("🛠 (Huquqli)" if can_manage else "👤 (Oddiy)")
+            text += f"• `{uid}` {status}\n"
+    
+    await call.message.edit_text(text, reply_markup=markup, parse_mode="Markdown")
 
 @router.callback_query(F.data == "add_admin_prompt")
 async def add_admin_prompt(call: CallbackQuery):
@@ -165,8 +173,26 @@ async def add_admin_prompt(call: CallbackQuery):
         await call.answer("❌ Sizda bu huquq yo'q!", show_alert=True)
         return
     
+    markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_to_admin_panel")]
+    ])
+    
     await call.message.edit_text("👤 Yangi adminning Telegram ID sini kiritish uchun `/setadmin ID` buyrug'idan foydalaning.\n\n"
-                                 "Masalan: `/setadmin 12345678`", parse_mode="Markdown")
+                                 "Masalan: `/setadmin 12345678`", reply_markup=markup, parse_mode="Markdown")
+
+@router.callback_query(F.data == "back_to_admin_panel")
+async def back_to_admin_panel_handler(call: CallbackQuery):
+    if call.from_user.id != OWNER_ID and not await is_admin(call.from_user.id):
+        await call.answer("❌ Sizda bu huquq yo'q!", show_alert=True)
+        return
+
+    markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👥 Adminlar ro'yxati", callback_data="list_admins")],
+        [InlineKeyboardButton(text="➕ Admin qo'shish", callback_data="add_admin_prompt")]
+    ])
+    
+    await call.message.edit_text("🛠 *Admin Panel*\n\nBoshqarish uchun tugmalardan foydalaning:", 
+                                 reply_markup=markup, parse_mode="Markdown")
 
 @router.message(Command("setadmin"))
 async def set_admin_handler(message: Message):

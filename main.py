@@ -30,6 +30,9 @@ async def cmd_start(message: types.Message, state: FSMContext = None):
         if state:
             await state.set_state(user.UserBdayState.waiting_for_bday)
         return
+    
+    if state:
+        await state.clear()
 
     is_user_admin = await is_admin(message.from_user.id) or message.from_user.id == OWNER_ID
     
