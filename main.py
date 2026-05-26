@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import pytz
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types
@@ -13,6 +14,13 @@ import admin
 import user
 
 TASHKENT_TZ = pytz.timezone('Asia/Tashkent')
+
+# Tug'ilgan kun GIF animatsiyalari (istaganingizni qo'shishingiz mumkin)
+BIRTHDAY_GIFS = [
+    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWJ6enVkd2ZjdGZhNm1vNGY5ZGJhZW83bTBvcDlsbHpidDh4cWZmYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/artj92V8o75VPL7AeQ/giphy.gif",
+    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaW9hbzNnd3BuZzM1a2d5OTA1MzNweTU5cXQ3aDJ1OHpkMmpucjY4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/g5R9dok94mrIvplmZd/giphy.gif",
+    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYjE2OGMzMnBodGZ1ZXh0ZXJudDdpZGJhOGVhMGtscHZ2NjZ3djMzMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xUOwGhOrYP0jP6iAy4/giphy.gif"
+]
 
 # Register logging
 logging.basicConfig(level=logging.INFO)
@@ -68,6 +76,12 @@ async def send_notification(name, day, month, year, chat_id, diff=None):
         msg = (f"🥳 *Bugun quvonchli kun!* \n\n"
                f"🎈 Bugun *{name}*{age_text}ning tug'ilgan kuni! \n"
                f"Keling, uni birgalikda tabriklaymiz! 🍰✨")
+        # Tasodifiy GIF yuborish
+        try:
+            gif_url = random.choice(BIRTHDAY_GIFS)
+            await bot.send_animation(target_chat, gif_url)
+        except Exception as e:
+            logging.warning(f"GIF yuborishda xatolik: {e}")
     elif diff == 1:
         countdown = format_countdown(next_bday)
         msg = (f"⏳ *Eslatma!* \n\n"
