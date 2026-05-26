@@ -108,10 +108,12 @@ async def get_user_added_birthdays(user_id):
 async def delete_birthday(name, day, month, added_by):
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.execute(
+        result = await conn.execute(
             'DELETE FROM birthdays WHERE name = $1 AND day = $2 AND month = $3 AND added_by = $4',
             name, day, month, added_by
         )
+        # result format: 'DELETE N' where N is rows affected
+        return int(result.split()[-1])
 
 
 # ──────────────────────────────────────────

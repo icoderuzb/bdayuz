@@ -5,6 +5,7 @@ from database import add_birthday, add_admin, is_admin, get_admin_data, get_all_
 from config import OWNER_ID
 from utils import days_until_birthday
 import re
+from datetime import date
 
 router = Router()
 
@@ -16,6 +17,11 @@ def parse_birthday_line(line):
         day = int(match.group(2))
         month = int(match.group(3))
         year = int(match.group(4)) if match.group(4) else None
+        # Sana haqiqiyligini tekshirish (yil bo'lmasa kabisa yili 2000 ishlatiladi)
+        try:
+            date(year or 2000, month, day)
+        except ValueError:
+            return None
         return name, day, month, year
     return None
 
@@ -48,6 +54,7 @@ async def add_bday_handler(message: Message):
     
     await message.answer(resp)
     # Trigger a check for the current chat immediately
+    # Lazy import: circular dependency oldini olish uchun (main → admin → main)
     from main import check_birthdays_for_chat
     await check_birthdays_for_chat(message.chat.id)
 
@@ -62,10 +69,13 @@ async def del_bday_handler(message: Message):
     parsed = parse_birthday_line(text)
     if parsed:
         name, day, month, year = parsed
-        await delete_birthday(name, day, month, message.from_user.id)
-        await message.answer(f"🗑 *{name}* sizning ro'yxatingizdan o'chirildi.", parse_mode="Markdown")
+        deleted = await delete_birthday(name, day, month, message.from_user.id)
+        if deleted:
+            await message.answer(f"🗑 *{name}* sizning ro'yxatingizdan o'chirildi.", parse_mode="Markdown")
+        else:
+            await message.answer(f"⚠️ *{name}* sizning ro'yxatingizda topilmadi.", parse_mode="Markdown")
     else:
-        await message.answer("❌ Noto'g'ri format. Iltimos, `/add` dagi kabi formatdan foydalaning.")
+        await message.answer("❌ Noto'g'ri format. Iltimos, `/add` dagi kabi formatdan foydalaning.", parse_mode="Markdown")
 
 @router.message(Command("list"))
 async def list_bdays_handler(message: Message):
@@ -201,7 +211,7 @@ async def set_admin_handler(message: Message):
 
     args = message.text.split()
     if len(args) < 2:
-        await message.answer("⚠️ ID ko'rsatilmadi. Masalan: `/setadmin 12345678`")
+        await message.answer("⚠️ ID ko'rsatilmadi. Masalan: `/setadmin 12345678`", parse_mode="Markdown")
         return
 
     try:
@@ -226,7 +236,16 @@ async def perm_manage_handler(call: CallbackQuery):
     admin_id = int(call.data.split("_")[2])
     await add_admin(admin_id, can_manage_admins=True)
     await call.answer("✅ Huquq berildi!", show_alert=True)
-    await call.message.edit_text(f"✅ Admin `{admin_id}` endi boshqa adminlarni boshqara oladi.")
+    await call.message.edit_text(f"✅ Admin `{admin_id}` endi boshqa adminlarni boshqara oladi.", parse_mode="Markdown")
+
+@router.callback_query(F.data.startswith("perm_none_"))
+async def perm_none_handler(call: CallbackQuery):
+    if call.from_user.id != OWNER_ID:
+        return
+    admin_id = int(call.data.split("_")[2])
+    await add_admin(admin_id, can_manage_admins=False)
+    await call.answer("✅ Huquq olib tashlandi!", show_alert=True)
+    await call.message.edit_text(f"✅ Admin `{admin_id}` endi oddiy admin.", parse_mode="Markdown")
 
 @router.callback_query(F.data.startswith("remove_admin_"))
 async def remove_admin_handler(call: CallbackQuery):
@@ -235,4 +254,4 @@ async def remove_admin_handler(call: CallbackQuery):
     admin_id = int(call.data.split("_")[2])
     await remove_admin(admin_id)
     await call.answer("🗑 Admin o'chirildi!", show_alert=True)
-    await call.message.edit_text(f"🗑 Admin `{admin_id}` ro'yxatdan o'chirildi.")
+    await call.message.edit_text(f"🗑 Admin `{admin_id}` ro'yxatdan o'chirildi.", parse_mode="Markdown")

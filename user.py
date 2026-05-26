@@ -6,6 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 from database import set_user_birthday, get_user_birthday, get_user_remind_settings, set_user_remind_settings
 from utils import days_until_birthday
 import re
+from datetime import date
 
 router = Router()
 
@@ -76,8 +77,10 @@ async def process_user_bday(message: Message, state: FSMContext):
         month = int(match.group(2))
         year = int(match.group(3)) if match.group(3) else None
         
-        # Simple validation
-        if not (1 <= day <= 31 and 1 <= month <= 12):
+        # Sana haqiqiyligini tekshirish (yil bo'lmasa kabisa yili 2000 ishlatiladi)
+        try:
+            date(year or 2000, month, day)
+        except ValueError:
             await message.answer("❌ Noto'g'ri sana! Iltimos, haqiqiy sanani kiriting.")
             return
 
@@ -92,7 +95,7 @@ async def process_user_bday(message: Message, state: FSMContext):
         await message.answer(resp, parse_mode="Markdown")
         await state.clear()
     else:
-        await message.answer("❌ Noto'g'ri format! Iltimos, `DD.MM.YYYY` formatida kiriting (masalan: `24.08.2005`).")
+        await message.answer("❌ Noto'g'ri format! Iltimos, `DD.MM.YYYY` formatida kiriting (masalan: `24.08.2005`).", parse_mode="Markdown")
 
 @router.callback_query(F.data.startswith("remind_toggle_"))
 async def remind_toggle_handler(call: CallbackQuery):

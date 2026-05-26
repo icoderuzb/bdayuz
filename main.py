@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from config import BOT_TOKEN, OWNER_ID
+from config import BOT_TOKEN, OWNER_ID, REMINDER_TIME_0
 from database import init_db, close_db, get_all_birthdays, is_admin, get_all_user_birthdays, get_user_remind_settings
 from utils import get_next_birthday, format_countdown, get_age, days_until_birthday, today_tashkent
 import admin
@@ -64,7 +64,7 @@ async def send_notification(name, day, month, year, chat_id, diff=None):
     target_chat = chat_id if chat_id else OWNER_ID 
 
     if diff == 0:
-        age_text = f" ({get_age(year, today.year)} yosh)" if year else ""
+        age_text = f" ({get_age(year, today.year, month, day)} yosh)" if year else ""
         msg = (f"🥳 *Bugun quvonchli kun!* \n\n"
                f"🎈 Bugun *{name}*{age_text}ning tug'ilgan kuni! \n"
                f"Keling, uni birgalikda tabriklaymiz! 🍰✨")
@@ -137,8 +137,9 @@ async def main():
         dp.include_router(admin.router)
         dp.include_router(user.router)
         
-        # Schedule birthday checks at 00:05 every day
-        scheduler.add_job(check_birthdays, 'cron', hour=0, minute=5, timezone=TASHKENT_TZ)
+        # Schedule birthday checks every day at configured time
+        _hour, _minute = map(int, REMINDER_TIME_0.split(':'))
+        scheduler.add_job(check_birthdays, 'cron', hour=_hour, minute=_minute, timezone=TASHKENT_TZ)
         
         # Schedule daily personal reminders at 08:08 every day (Tashkent time)
         scheduler.add_job(daily_user_reminders, 'cron', hour=8, minute=8, timezone=TASHKENT_TZ)

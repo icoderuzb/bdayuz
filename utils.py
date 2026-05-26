@@ -47,10 +47,15 @@ def format_countdown(target_date):
     
     return f"{days:02d}kun, {hours:02d}soat, {minutes:02d}min, {seconds:02d}sek"
 
-def get_age(birth_year, current_year):
+def get_age(birth_year, current_year, birth_month=None, birth_day=None):
     if not birth_year:
         return None
-    return current_year - birth_year
+    age = current_year - birth_year
+    if birth_month and birth_day:
+        today = today_tashkent()
+        if (today.month, today.day) < (birth_month, birth_day):
+            age -= 1
+    return age
 
 def days_until_birthday(day, month):
     next_bday = get_next_birthday(day, month)
