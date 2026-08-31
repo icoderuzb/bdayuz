@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import BOT_TOKEN, OWNER_ID, REMINDER_TIME_0
 from database import init_db, close_db, get_all_birthdays, is_admin, get_all_user_birthdays, get_user_remind_settings
-from utils import get_next_birthday, format_countdown, get_age, days_until_birthday, today_tashkent
+from utils import get_age, days_until_birthday, today_tashkent
 import admin
 import user
 
@@ -60,69 +60,38 @@ async def cmd_start(message: types.Message, state: FSMContext = None):
                  "• `/setadmin ID` — Yangi admin tayinlash\n\n")
     
     text += "💡 Bir vaqtning o'zida bir nechta odamni qo'shish uchun `/add` dan so'ng har birini yangi qatordan yozing.\n\n"
-    text += "⏰ Eslatmalar 2 kun oldin, 1 kun oldin va tug'ilgan kuni soat 00:05 da yuboriladi."
+    text += "⏰ Guruhdagi tug'ilgan kunlar aynan tug'ilgan kuni soat 00:05 da tabriklanadi.\n"
+    text += "🔔 Shaxsiy eslatmalar esa `/remind_settings` sozlamangizga ko'ra soat 08:08 da yuboriladi."
     await message.answer(text, parse_mode="Markdown")
 
-async def send_notification(name, day, month, year, chat_id, diff=None):
-    next_bday = get_next_birthday(day, month)
+async def send_notification(name, day, month, year, chat_id):
     today = today_tashkent()
-    if diff is None:
-        diff = (next_bday - today).days
-    
     target_chat = chat_id if chat_id else OWNER_ID 
 
-    if diff == 0:
-        age_text = f" ({get_age(year, today.year, month, day)} yosh)" if year else ""
-        msg = (f"🥳 *Bugun quvonchli kun!* \n\n"
-               f"🎈 Bugun *{name}*{age_text}ning tug'ilgan kuni! \n"
-               f"Keling, uni birgalikda tabriklaymiz! 🍰✨")
-        # Tasodifiy GIF yuborish
-        try:
-            gif_url = random.choice(BIRTHDAY_GIFS)
-            await bot.send_animation(target_chat, gif_url)
-        except Exception as e:
-            logging.warning(f"GIF yuborishda xatolik: {e}")
-    elif diff == 1:
-        countdown = format_countdown(next_bday)
-        msg = (f"⏳ *Eslatma!* \n\n"
-               f"🎁 Ertaga *{name}*ning tug'ilgan kuni! \n"
-               f"Tug'ilgan kungacha: `{countdown}` qoldi. \n"
-               f"Tayyorgarlikni ko'ring! 🎊")
-    elif diff == 2:
-        countdown = format_countdown(next_bday)
-        msg = (f"🗓 *Yaqinlashmoqda!* \n\n"
-               f"💠 2 kundan keyin *{name}*ning tug'ilgan kuni! \n"
-               f"Tug'ilgan kungacha: `{countdown}` qoldi. \n"
-               f"Sovg'a haqida o'ylash vaqti keldi! 🧸")
-    elif diff == 7:
-        msg = (f"🔔 *1 hafta qoldi!* \n\n"
-               f"📅 *{name}*ning tug'ilgan kuniga 1 hafta qoldi! \n"
-               f"Erta tayyorgarlik ko'rsangiz yaxshi! 🎁")
-    else:
-        countdown = format_countdown(next_bday)
-        msg = (f"🔔 *Eslatma!* \n\n"
-               f"📅 *{diff} kundan* keyin *{name}*ning tug'ilgan kuni! \n"
-               f"Tug'ilgan kungacha: `{countdown}` qoldi.")
+    age_text = f" ({get_age(year, today.year, month, day)} yosh)" if year else ""
+    msg = (f"🥳 *Bugun quvonchli kun!* \n\n"
+           f"🎈 Bugun *{name}*{age_text}ning tug'ilgan kuni! \n"
+           f"Keling, uni birgalikda tabriklaymiz! 🍰✨")
+    # Tasodifiy GIF yuborish
+    try:
+        gif_url = random.choice(BIRTHDAY_GIFS)
+        await bot.send_animation(target_chat, gif_url)
+    except Exception as e:
+        logging.warning(f"GIF yuborishda xatolik: {e}")
     await bot.send_message(target_chat, msg, parse_mode="Markdown")
 
 async def check_birthdays_for_chat(target_chat_id):
     birthdays = await get_all_birthdays()
     for name, day, month, year, chat_id, added_by in birthdays:
         if chat_id == target_chat_id:
-            remind_days = await get_user_remind_settings(added_by)
-            today = today_tashkent()
-            diff = (get_next_birthday(day, month) - today).days
-            if diff in remind_days:
-                await send_notification(name, day, month, year, chat_id, diff)
+            if days_until_birthday(day, month) == 0:
+                await send_notification(name, day, month, year, chat_id)
 
 async def check_birthdays():
     birthdays = await get_all_birthdays()
     for name, day, month, year, chat_id, added_by in birthdays:
-        remind_days = await get_user_remind_settings(added_by)
-        today = today_tashkent()
-        diff = (get_next_birthday(day, month) - today).days
-        if diff in remind_days:
-            await send_notification(name, day, month, year, chat_id, diff)
+        if days_until_birthday(day, month) == 0:
+            await send_notification(name, day, month, year, chat_id)
 
 async def daily_user_reminders():
     user_birthdays = await get_all_user_birthdays()

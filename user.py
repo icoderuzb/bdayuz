@@ -61,9 +61,10 @@ async def remind_settings_handler(message: Message, state: FSMContext):
     current = await get_user_remind_settings(message.from_user.id)
     markup = build_remind_keyboard(current)
     await message.answer(
-        "🔔 *Eslatma sozlamalari*\n\n"
-        "Qachon eslatma olishni xohlaysiz?\n"
-        "_(Bir nechta variant tanlash mumkin)_",
+        "🔔 *Shaxsiy eslatma sozlamalari*\n\n"
+        "O'z tug'ilgan kuningiz uchun qachon eslatma olishni xohlaysiz?\n"
+        "_(Bir nechta variant tanlash mumkin)_\n\n"
+        "ℹ️ *Eslatma:* Guruhdagi tug'ilgan kunlar har doim aynan tug'ilgan kuni soat 00:05 da tabriklanadi.",
         reply_markup=markup,
         parse_mode="Markdown"
     )
@@ -117,7 +118,7 @@ async def remind_save_handler(call: CallbackQuery):
     current = await get_user_remind_settings(call.from_user.id)
     labels = [label for day, label in REMIND_OPTIONS if day in current]
     if labels:
-        text = "✅ *Sozlamalar saqlandi!*\n\n🔔 Eslatmalar:\n" + "\n".join(f"• {l}" for l in labels)
+        text = "✅ *Shaxsiy eslatma sozlamalari saqlandi!*\n\n🔔 Eslatmalar:\n" + "\n".join(f"• {l}" for l in labels)
     else:
         text = "⚠️ Hech qanday eslatma tanlanmagan!\nKamida bittasini tanlang."
     await call.message.edit_text(text, parse_mode="Markdown")
